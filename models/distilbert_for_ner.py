@@ -19,6 +19,7 @@ class DistilBertCrfForNer(DistilBertPreTrainedModel):
         logits = self.classifier(sequence_output)
         outputs = (logits,)
         if labels is not None:
+            labels = torch.where(labels >= 0, labels, torch.zeros_like(labels))
             loss = self.crf(emissions = logits, tags=labels, mask=attention_mask)
             outputs = (-1*loss,)+outputs
         return outputs  # (loss), scores

@@ -59,6 +59,47 @@ def seed_everything(seed=1029):
     torch.backends.cudnn.deterministic = True
 
 
+def prepare_device(n_gpu_use):
+    """
+    setup GPU device if available, move model into configured device
+    # 如果n_gpu_use为数字，则使用range生成list
+    # 如果输入的是一个list，则默认使用list[0]作为controller
+     """
+    if not n_gpu_use:
+        device_type = 'cpu'
+    else:
+        n_gpu_use = n_gpu_use.split(",")
+        device_type = f"cuda:{n_gpu_use[0]}"
+    n_gpu = torch.cuda.device_count()
+    if len(n_gpu_use) > 0 and n_gpu == 0:
+        logger.warning("Warning: There\'s no GPU available on this machine, training will be performed on CPU.")
+        device_type = 'cpu'
+    if len(n_gpu_use) > n_gpu:
+        msg = f"Warning: The number of GPU\'s configured to use is {n_gpu_use}, but only {n_gpu} are available on this machine."
+        logger.warning(msg)
+        n_gpu_use = range(n_gpu)
+    device = torch.device(device_type)
+    list_ids = n_gpu_use
+    return device, list_ids
+
+
+def model_device(n_gpu, model):
+    '''
+    判断环境 cpu还是gpu
+    支持单机多卡
+    :param n_gpu:
+    :param model:
+    :return:
+    '''
+    device, device_ids = prepare_device(n_gpu)
+    if len(device_ids) > 1:
+        logger.info(f"current {len(device_ids)} GPUs")
+        model = torch.nn.DataParallel(model, device_ids=device_ids)
+    if len(device_ids) == 1:
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(device_ids[0])
+    model = model.to(device)
+    return model, device
+
 
 def restore_checkpoint(resume_path, model=None):
     '''
@@ -82,6 +123,95 @@ def restore_checkpoint(resume_path, model=None):
         model.load_state_dict(states)
     return [model,best,start_epoch]
 
+
+def save_pickle(data, file_path):
+    '''
+    保存成pickle文件
+    :param data:
+    :param file_name:
+    :param pickle_path:
+    :return:
+    '''
+    if isinstance(file_path, Path):
+        file_path = str(file_path)
+    with open(file_path, 'wb') as f:
+        pickle.dump(data, f)
+
+
+def load_pickle(input_file):
+    '''
+    读取pickle文件
+    :param pickle_path:
+    :param file_name:
+    :return:
+    '''
+    with open(str(input_file), 'rb') as f:
+        data = pickle.load(f)
+    return data
+
+
+def save_json(data, file_path):
+    '''
+    保存成json文件
+    :param data:
+    :param json_path:
+    :param file_name:
+    :return:
+    '''
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
+    # if isinstance(data,dict):
+    #     data = json.dumps(data)
+    with open(str(file_path), 'w') as f:
+        json.dump(data, f)
+
+def save_numpy(data, file_path):
+    '''
+    保存成.npy文件
+    :param data:
+    :param file_path:
+    :return:
+    '''
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
+    np.save(str(file_path),data)
+
+def load_numpy(file_path):
+    '''
+    加载.npy文件
+    :param file_path:
+    :return:
+    '''
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
+    np.load(str(file_path))
+
+def load_json(file_path):
+    '''
+    加载json文件
+    :param json_path:
+    :param file_name:
+    :return:
+    '''
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
+    with open(str(file_path), 'r') as f:
+        data = json.load(f)
+    return data
+
+def json_to_text(file_path,data):
+    '''
+    将json list写入text文件中
+    :param file_path:
+    :param data:
+    :return:
+    '''
+    if not isinstance(file_path, Path):
+        file_path = Path(file_path)
+    with open(str(file_path), 'w') as fw:
+        for line in data:
+            line = json.dumps(line, ensure_ascii=False)
+            fw.write(line + '\n')
 
 def save_model(model, model_path):
     """ 存储不含有显卡信息的state_dict或model
@@ -119,6 +249,33 @@ def load_model(model, model_path):
         model.load_state_dict(state)
     return model
 
+
+class AverageMeter(object):
+    '''
+    computes and stores the average and current value
+    Example:
+        >>> loss = AverageMeter()
+        >>> for step,batch in enumerate(train_data):
+        >>>     pred = self.model(batch)
+        >>>     raw_loss = self.metrics(pred,target)
+        >>>     loss.update(raw_loss.item(),n = 1)
+        >>> cur_loss = loss.avg
+    '''
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
 
 
 def summary(model, *inputs, batch_size=-1, show_input=True):

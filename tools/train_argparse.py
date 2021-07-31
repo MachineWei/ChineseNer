@@ -33,25 +33,25 @@ def get_argparse():
      ## 模型保存及预测结果
      parser.add_argument("--output_dir", default="outputs/", type=str,
                          help="The output directory where the model predictions and checkpoints will be written.", )
-     parser.add_argument("--logging_steps", type=int, default=1000,
+     parser.add_argument("--logging_steps", type=int, default=500,
                          help="Log every X updates steps.")
-     parser.add_argument("--save_steps", type=int, default=1000, 
+     parser.add_argument("--save_steps", type=int, default=500, 
                          help="Save checkpoint every X updates steps.")
      # 训练参数
-     parser.add_argument("--do_train", action="store_true", default=False,
+     parser.add_argument("--do_train", action="store_true", default=True,
                          help="是否进行训练")
-     parser.add_argument("--do_eval", action="store_true", default=False,
+     parser.add_argument("--do_eval", action="store_true", default=True,
                          help="是否进行验证")
      parser.add_argument("--do_predict", action="store_true", default=True,
                          help="是否进行预测")
 
-     parser.add_argument("--num_train_epochs", default=4, type=float,
+     parser.add_argument("--num_train_epochs", default=5, type=float,
                          help="Total number of training epochs to perform.")     
      parser.add_argument("--n_gpu", default=1, type=int,
                          help="GPU个数")
-     parser.add_argument("--per_gpu_train_batch_size", default=128, type=int,
+     parser.add_argument("--per_gpu_train_batch_size", default=64, type=int,
                          help="Batch size per GPU/CPU for training.")
-     parser.add_argument("--per_gpu_eval_batch_size", default=128, type=int,
+     parser.add_argument("--per_gpu_eval_batch_size", default=64, type=int,
                          help="Batch size per GPU/CPU for evaluation.")
 
      parser.add_argument("--train_max_seq_length", default=128, type=int,
@@ -65,6 +65,8 @@ def get_argparse():
 
      parser.add_argument("--continue_train_checkpoint", default="outputs/electra/checkpoint-13100 acc: 0.8940 - recall: 0.8485 - f1: 0.8707", type=str,
                          help="从上一步保存开始训练", )
+                         
+     parser.add_argument("--soft_label", action="store_const", const=True, help="Soft label fot end_fc")
 
      parser.add_argument("--gradient_accumulation_steps", type=int, default=1,
                          help="Number of updates steps to accumulate before performing a backward/update pass.", )
@@ -80,10 +82,14 @@ def get_argparse():
                          help="Max gradient norm.")
      parser.add_argument("--max_steps", default=-1, type=int,
                          help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
+     parser.add_argument("--bert_lr", type=float, help="The initial learning rate for BERT.")
+     parser.add_argument("--start_lr", type=float, help="The initial learning rate of start_fc.")
+     parser.add_argument("--end_lr", type=float, help="The initial learning rate of end_fc.")     
+     
      # 其他
      parser.add_argument("--warmup_proportion", default=0.1, type=float,
                          help="Proportion of training to perform linear learning rate warmup for,E.g., 0.1 = 10% of training.")
-     parser.add_argument("--no_cuda", action="store_true", default=True, 
+     parser.add_argument("--no_cuda", action="store_true", default=False, 
                          help="Avoid using CUDA when available")
      parser.add_argument("--overwrite_output_dir", action="store_true", default=True,
                          help="Overwrite the content of the output directory")
@@ -118,6 +124,8 @@ def get_argparse():
      # adversarial training
      parser.add_argument("--do_adv", action="store_true", default=False,
                          help="Whether to adversarial training.")
+     parser.add_argument("--adv_training", default=None, choices=['fgm', 'pgd'], help="fgm adversarial training")
+     
      parser.add_argument('--adv_epsilon', default=1.0, type=float,
                          help="Epsilon for adversarial.")
      parser.add_argument('--adv_name', default='word_embeddings', type=str,
